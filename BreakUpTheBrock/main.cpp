@@ -9,11 +9,17 @@
 //パドル関連
 #define PADDLE_WIDTH 60
 #define PADDLE_HEIGHT 10
-#define PADDLE_SPEED 5
+#define PADDLE_SPEED 15
 
 //ボール関連
 #define BALL_SIZE 8
-#define BALL_SPEED 3
+#define BALL_SPEED 2
+
+/* ブロック */
+#define BLOCK_ROWS 5
+#define BLOCK_COLS 8
+#define BLOCK_WIDTH 35
+#define BLOCK_HEIGHT 15
 
 
 int main(int argc, char* argv[])
@@ -66,6 +72,22 @@ int main(int argc, char* argv[])
     int ball_vx = BALL_SPEED;
     int ball_vy = -BALL_SPEED;
     
+    /* ブロック */
+    SDL_Rect blocks[BLOCK_ROWS][BLOCK_COLS];
+    int block_visible[BLOCK_ROWS][BLOCK_COLS];
+
+    for(int i =0; i < BLOCK_ROWS; i++)
+    {
+        for(int j = 0; j < BLOCK_COLS; j++)
+        {
+            blocks[i][j].x = j * (BLOCK_WIDTH + 3) + 5;
+            blocks[i][j].y = i * (BLOCK_HEIGHT + 3) + 10;
+            blocks[i][j].w = BLOCK_WIDTH;
+            blocks[i][j].h = BLOCK_HEIGHT;
+            block_visible[i][j] = 1;
+        }
+    }
+
     /* ゲームループ */
     while (quit_flg)
     {
@@ -118,6 +140,21 @@ int main(int argc, char* argv[])
             ball_vy *= -1;
         }
 
+        /* ブロックと衝突 */
+        for(int i = 0; i < BLOCK_ROWS; i++)
+        {
+            for(int j = 0; j < BLOCK_COLS; j++)
+            {
+                if(block_visible[i][j] && SDL_HasIntersection(&ball, &blocks[i][j]))
+                {
+                    block_visible[i][j] = 0;
+                    ball_vy *= -1;
+                    goto skip_check;
+                }
+            }
+        }
+        skip_check:;
+
         /* 下に落ちたらゲーム終了 */
         if(ball.y > WINDOW_HEIGHT)
         {
@@ -132,7 +169,22 @@ int main(int argc, char* argv[])
         /* パドル描画(黒) */
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderFillRect(renderer, &paddle);
+
+        /* ボール描画 */
         SDL_RenderFillRect(renderer, &ball);
+
+        /* ブロック描画 */
+        SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+        for(int i = 0; i < BLOCK_ROWS; i++)
+        {
+            for(int j = 0; j < BLOCK_COLS; j++)
+            {
+                if(block_visible[i][j])
+                {
+                    SDL_RenderFillRect(renderer, &blocks[i][j]);
+                }
+            }
+        }
 
         /* 描画反映 */
         SDL_RenderPresent(renderer);

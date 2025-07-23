@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include <SDL2/SDL.h>
 
 //画面サイズ
 #define WINDOW_WIDTH 320
-#define WINDOW_HEIGHT 240
+#define WINDOW_HEIGHT 480
 
 //パドル関連
 #define PADDLE_WIDTH 60
@@ -56,15 +57,15 @@ int main(int argc, char* argv[])
     /* パドル初期位置 */
     SDL_Rect paddle = {
         .x = (WINDOW_WIDTH - PADDLE_WIDTH) /2,
-        .y = WINDOW_HEIGHT - 30,
+        .y = WINDOW_HEIGHT - 50,
         .w = PADDLE_WIDTH,
         .h = PADDLE_HEIGHT
     };
 
     /* ボール初期位置と速度 */
     SDL_Rect ball = {
-        .x = WINDOW_WIDTH / 2,
-        .y = WINDOW_HEIGHT / 2,
+        .x = (WINDOW_WIDTH - BALL_SIZE) / 2,
+        .y = paddle.y - BALL_SIZE -2, //パドルのすぐ上に配置
         .w = BALL_SIZE,
         .h = BALL_SIZE
     };
@@ -81,7 +82,7 @@ int main(int argc, char* argv[])
         for(int j = 0; j < BLOCK_COLS; j++)
         {
             blocks[i][j].x = j * (BLOCK_WIDTH + 3) + 5;
-            blocks[i][j].y = i * (BLOCK_HEIGHT + 3) + 10;
+            blocks[i][j].y = i * (BLOCK_HEIGHT + 5) + 30;
             blocks[i][j].w = BLOCK_WIDTH;
             blocks[i][j].h = BLOCK_HEIGHT;
             block_visible[i][j] = 1;
@@ -137,7 +138,22 @@ int main(int argc, char* argv[])
         /* パドルに当たったら跳ね返る */
         if(SDL_HasIntersection(&ball, &paddle) && ball_vy > 0)
         {
-            ball_vy *= -1;
+            //パドル中心とボール中心の差
+            int paddle_center = paddle.x + paddle.w / 2;
+            int ball_center = ball.x + ball.w / 2;
+            int diff = ball_center - paddle_center;
+
+           //[-1.0, 1.0]の範囲で正規化
+            float norm = (float)diff / (PADDLE_WIDTH / 2);
+
+            //最大角度を調整(30〜60度)
+            float angle = norm * (M_PI / 3); //最大60度まで
+
+            float speed = sqrt(ball_vx * ball_vx 
+                + ball_vy * ball_vy); // 速度ベクトルの大きさを保つ
+
+            ball_vx = (int)(speed) * sin(angle);
+            ball_vy = -(int)(speed * cos(angle));
         }
 
         /* ブロックと衝突 */

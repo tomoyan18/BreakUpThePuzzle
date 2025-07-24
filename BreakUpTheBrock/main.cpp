@@ -14,7 +14,7 @@
 
 //ボール関連
 #define BALL_SIZE 8
-#define BALL_SPEED 2
+#define BALL_SPEED 2.0f
 
 /* ブロック */
 #define BLOCK_ROWS 5
@@ -29,6 +29,9 @@ int main(int argc, char* argv[])
     SDL_Window *window;
     SDL_Renderer *renderer;
     int quit_flg = 1;
+
+    //スコア初期化
+    int score = 0;
 
     /*初期化*/
     if(SDL_Init(SDL_INIT_VIDEO) < 0)
@@ -63,15 +66,21 @@ int main(int argc, char* argv[])
     };
 
     /* ボール初期位置と速度 */
+    float ball_x = (WINDOW_WIDTH - BALL_SIZE) / 2.0f;
+    float ball_y = paddle.y - BALL_SIZE -2;
+    float ball_vx = BALL_SPEED;
+    float ball_vy = -BALL_SPEED;
+
+
     SDL_Rect ball = {
-        .x = (WINDOW_WIDTH - BALL_SIZE) / 2,
-        .y = paddle.y - BALL_SIZE -2, //パドルのすぐ上に配置
+        .x = (int)ball_x,
+        .y = (int)ball_y, //パドルのすぐ上に配置
         .w = BALL_SIZE,
         .h = BALL_SIZE
     };
 
-    int ball_vx = BALL_SPEED;
-    int ball_vy = -BALL_SPEED;
+    //int ball_vx = BALL_SPEED;
+    //int ball_vy = -BALL_SPEED;
     
     /* ブロック */
     SDL_Rect blocks[BLOCK_ROWS][BLOCK_COLS];
@@ -122,8 +131,12 @@ int main(int argc, char* argv[])
             }
         }
         /* ボール移動 */
-        ball.x += ball_vx;
-        ball.y += ball_vy;
+        ball_x += ball_vx;
+        ball_y += ball_vy;
+
+        /* 描画用に整数へ */
+        ball.x = (int)ball_x;
+        ball.y = (int)ball_y;
 
         /* 壁に当たったら跳ね返る */
         if(ball.x <= 0 || ball.x + BALL_SIZE >= WINDOW_WIDTH)
@@ -152,8 +165,13 @@ int main(int argc, char* argv[])
             float speed = sqrt(ball_vx * ball_vx 
                 + ball_vy * ball_vy); // 速度ベクトルの大きさを保つ
 
-            ball_vx = (int)(speed) * sin(angle);
-            ball_vy = -(int)(speed * cos(angle));
+            if(speed < 1.5f)
+            {
+                speed = 1.5f;
+            }
+
+            ball_vx = speed * sin(angle);
+            ball_vy = -speed * cos(angle);
         }
 
         /* ブロックと衝突 */
@@ -165,16 +183,42 @@ int main(int argc, char* argv[])
                 {
                     block_visible[i][j] = 0;
                     ball_vy *= -1;
+                    score += 10;
                     goto skip_check;
                 }
             }
         }
         skip_check:;
 
+        /* ステージクリア判定 */
+        int all_cleared = 1;
+        for(int i = 0; i < BLOCK_ROWS; i++)
+        {
+            for(int j = 0; j < BLOCK_COLS; j++)
+            {
+                if(block_visible[i][j])
+                {
+                    all_cleared = 0;
+                    break;
+                }
+            }
+
+            if(!all_cleared) break;
+
+        }
+
+        if(all_cleared)
+        {
+            /* クリアメッセージとスコア表示 */
+            printf("Stage Cleared! Final Score: %d\n", score);
+            quit_flg = 0;
+        }
+
         /* 下に落ちたらゲーム終了 */
         if(ball.y > WINDOW_HEIGHT)
         {
-            printf("Ball fell. Game Over\n");
+            /* ゲームオーバーでもスコア表示 */
+            printf("Ball fell. Game Over. Final Score: %d\n", score);
             quit_flg = 0;
         }
 

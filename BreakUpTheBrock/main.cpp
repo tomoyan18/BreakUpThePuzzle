@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 
 //画面サイズ
 #define WINDOW_WIDTH 320
@@ -22,6 +23,70 @@
 #define BLOCK_WIDTH 35
 #define BLOCK_HEIGHT 15
 
+/* アイテム関連 */
+#define MAX_ITEMS 10    //同時に存在できるアイテム数
+#define ITEM_SIZE 12    //アイテムの見た目のサイズ
+
+/* アイムの種類 */
+typedef enum {
+    ITEM_LIFE_PLUS
+} ItemType;
+
+/* アイテム構造体 */
+typedef struct 
+{
+    float x, y;
+    float vy;
+    ItemType type;
+    int active;
+    SDL_Rect rect;
+} Item;
+
+//アイテム管理用配列
+Item items[MAX_ITEMS];
+
+/* テキスト描画関数(残機を画面に表示する) */
+void draw_text(SDL_Renderer* renderer, TTF_Font* font, 
+               const char* text, int x, int y)
+{
+    SDL_Color color = {0, 0, 0};    //黒色
+    SDL_Surface* surface = TTF_RenderText_Solid(font, text, color);     //描画用サーフェス作成
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface); //テクスチャ化
+    SDL_Rect dst = {x, y, surface->w, surface->h};  //表示位置とサイズ
+    SDL_RenderCopy(renderer, texture, NULL, &dst);  //描画
+    SDL_FreeSurface(surface);
+    SDL_DestroyTexture(texture);
+}
+
+/* アイテムの効果適用 */
+void apply_item_effect(ItemType type, int* lives)
+{
+    if(type == ITEM_LIFE_PLUS)
+    {
+        (*lives)++;
+        printf("Got Life Up! Lives = %d\n", *lives);
+    }
+}
+
+/* アイテム生成 */
+void spawn_item(float x, float y, ItemType type)
+{
+    for(int i = 0; i < MAX_ITEMS; i++)
+    {
+        if(!items[i].active)
+        {
+            items[i].x = x;
+            items[i].y = y;
+            items[i].vy = 2.0f;
+            items[i].type = type;
+            items[i].active = 1;
+            items[i].rect.w = ITEM_SIZE;
+            items[i].rect.h = ITEM_SIZE;
+            return;
+        }
+    }
+}
+
 
 int main(int argc, char* argv[])
 {
@@ -32,11 +97,16 @@ int main(int argc, char* argv[])
 
     //スコア初期化
     int score = 0;
+    //残機の初期値
+    int lives = 3;
+
+    //ランダム初期化
+    srand((unsigned int)time(NULL));
 
     /*初期化*/
-    if(SDL_Init(SDL_INIT_VIDEO) < 0)
+    if(SDL_Init(SDL_INIT_VIDEO) < 0 || TTF_Init() < 0)
     {
-        fprintf(stderr, "SDL_Init(): %s\n", SDL_GetError());
+        fprintf(stderr, "SDL_Init or TTF_Init Error: %s\n", SDL_GetError());
         exit(1);
     }
 
@@ -50,11 +120,20 @@ int main(int argc, char* argv[])
         exit(1);
     }
 
+    /* レンダラー作成 */
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     if(renderer == NULL)
     {
         fprintf(stderr, "Can not create renderer\n");
         exit(1);
+    }
+
+    /* フォントを読み込む */
+    TTF_Font* font = TTF_OpenFont("Arial.ttf", 16);
+    if(!font)
+    {
+        fprintf(stderr, "Font Load Error: %s\n", TTF_GetError());
+        return 1;
     }
 
     /* パドル初期位置 */
@@ -78,9 +157,6 @@ int main(int argc, char* argv[])
         .w = BALL_SIZE,
         .h = BALL_SIZE
     };
-
-    //int ball_vx = BALL_SPEED;
-    //int ball_vy = -BALL_SPEED;
     
     /* ブロック */
     SDL_Rect blocks[BLOCK_ROWS][BLOCK_COLS];
@@ -96,6 +172,12 @@ int main(int argc, char* argv[])
             blocks[i][j].h = BLOCK_HEIGHT;
             block_visible[i][j] = 1;
         }
+    }
+
+    /* アイテム配列初期化 */
+    for(int i = 0; i < MAX_ITEMS; i++)
+    {
+        items[i].active = 0;
     }
 
     /* ゲームループ */
@@ -184,11 +266,40 @@ int main(int argc, char* argv[])
                     block_visible[i][j] = 0;
                     ball_vy *= -1;
                     score += 10;
+
+                    if(rand() % 3 == 0)
+                    {
+                        spawn_item(blocks[i][j].x + BLOCK_WIDTH / 2 - ITEM_SIZE / 2,
+                                   blocks[i][j].y + BLOCK_HEIGHT, ITEM_LIFE_PLUS);
+                    }
+
                     goto skip_check;
                 }
             }
         }
         skip_check:;
+
+        /* アイテム移動と取得判定 */
+        for(int i = 0; i < MAX_ITEMS; i++)
+        {
+            if(items[i].active)
+            {
+                items[i].y += items[i].vy;
+                items[i].rect.x = (int)items[i].x;
+                items[i].rect.y = (int)items[i].y;
+
+                //パドルとアイテムの当たり判定
+                if(SDL_HasIntersection(&paddle, &items[i].rect))
+                {
+                    apply_item_effect(items[i].type, &lives);
+                    items[i].active = 0;    //アイテム消去
+                }
+                else if(items[i].y > WINDOW_HEIGHT) //画面外に落ちたら消去
+                {
+                    items[i].active = 0;
+                }
+            }
+        }
 
         /* ステージクリア判定 */
         int all_cleared = 1;
@@ -217,9 +328,24 @@ int main(int argc, char* argv[])
         /* 下に落ちたらゲーム終了 */
         if(ball.y > WINDOW_HEIGHT)
         {
-            /* ゲームオーバーでもスコア表示 */
-            printf("Ball fell. Game Over. Final Score: %d\n", score);
-            quit_flg = 0;
+            lives--;
+            if(lives <= 0)
+            {
+                /* ゲームオーバーでもスコア表示 */
+                printf("Ball fell. Game Over. Final Score: %d\n", score);
+                quit_flg = 0;
+            }
+            else
+            {
+                //ボール位置リセット
+                ball_x = (WINDOW_WIDTH - BALL_SIZE) / 2.0f;
+                ball_y = paddle.y - BALL_SIZE - 2;
+                ball_vx = BALL_SPEED;
+                ball_vy = -BALL_SPEED;
+                printf("Ball fell. Lives left: %d\n", lives);
+                SDL_Delay(1000);
+            }
+            
         }
 
         /* 背景塗りつぶし */
@@ -245,6 +371,21 @@ int main(int argc, char* argv[])
                 }
             }
         }
+
+        /* アイテム描画(赤で表示) */
+        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+        for(int i = 0; i < MAX_ITEMS; i++)
+        {
+            if(items[i].active)
+            {
+                SDL_RenderFillRect(renderer, &items[i].rect);
+            }
+        }
+
+        /* 残機表示処理  */
+        char lives_text[32];
+        snprintf(lives_text, sizeof(lives_text), "Lives: %d", lives);    //表示するテキスト
+        draw_text(renderer, font, lives_text, WINDOW_WIDTH - 80, 5);    //画面右上に描画
 
         /* 描画反映 */
         SDL_RenderPresent(renderer);

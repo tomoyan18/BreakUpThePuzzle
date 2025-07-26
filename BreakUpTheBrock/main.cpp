@@ -29,7 +29,10 @@
 
 /* アイムの種類 */
 typedef enum {
-    ITEM_LIFE_PLUS
+    ITEM_LIFE_PLUS,     //残機+1
+    ITEM_PADDLE_EXPAND, //パドルが長くなる
+    ITEM_PADDLE_SHRINK, //パドルが短くなる
+    ITEM_BALL_PLUS      //ボールが増える
 } ItemType;
 
 /* アイテム構造体 */
@@ -59,13 +62,47 @@ void draw_text(SDL_Renderer* renderer, TTF_Font* font,
 }
 
 /* アイテムの効果適用 */
-void apply_item_effect(ItemType type, int* lives)
+void apply_item_effect(ItemType type, int* lives, SDL_Rect* paddle)
 {
-    if(type == ITEM_LIFE_PLUS)
+    /*if(type == ITEM_LIFE_PLUS)
     {
         (*lives)++;
         printf("Got Life Up! Lives = %d\n", *lives);
+    }*/
+    switch (type)
+    {
+    case ITEM_LIFE_PLUS:
+        (*lives)++;
+        printf("Got Life Up! Lives = %d\n", *lives);
+        break;
+
+    case ITEM_PADDLE_EXPAND:
+        printf("Paddle Expanded!\n");
+        //パドルを画面端に収まる範囲で長くする（例：+20）
+        if(paddle->w < WINDOW_WIDTH - 20)
+        {
+            paddle->w += 20;
+        }
+        break;
+    
+    case ITEM_PADDLE_SHRINK:
+        printf("Paddle Shrunk\n");
+        //パドルを最小幅まで短くする（例：-20）
+        if(paddle->w >40)
+        {
+            paddle->w -= 20;
+        }
+        break;
+    case ITEM_BALL_PLUS:
+        printf("Extra Ball! (Not implemented yet)\n");
+        //ボール追加機能は将来的に追加
+        break;
+    
+    default:
+        break;
     }
+
+
 }
 
 /* アイテム生成 */
@@ -267,10 +304,11 @@ int main(int argc, char* argv[])
                     ball_vy *= -1;
                     score += 10;
 
-                    if(rand() % 3 == 0)
+                    if(rand() % 5 == 0)
                     {
+                        ItemType type = static_cast<ItemType>(rand() % 3); //0〜２：３種類のアイテムからランダム
                         spawn_item(blocks[i][j].x + BLOCK_WIDTH / 2 - ITEM_SIZE / 2,
-                                   blocks[i][j].y + BLOCK_HEIGHT, ITEM_LIFE_PLUS);
+                                   blocks[i][j].y + BLOCK_HEIGHT, type); 
                     }
 
                     goto skip_check;
@@ -291,7 +329,7 @@ int main(int argc, char* argv[])
                 //パドルとアイテムの当たり判定
                 if(SDL_HasIntersection(&paddle, &items[i].rect))
                 {
-                    apply_item_effect(items[i].type, &lives);
+                    apply_item_effect(items[i].type, &lives, &paddle);
                     items[i].active = 0;    //アイテム消去
                 }
                 else if(items[i].y > WINDOW_HEIGHT) //画面外に落ちたら消去
@@ -373,11 +411,26 @@ int main(int argc, char* argv[])
         }
 
         /* アイテム描画(赤で表示) */
-        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+        
         for(int i = 0; i < MAX_ITEMS; i++)
         {
             if(items[i].active)
             {
+                switch (items[i].type)
+                {
+                    case ITEM_LIFE_PLUS:
+                        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);  // 赤
+                        break;
+                    case ITEM_PADDLE_EXPAND:
+                        SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);  // 緑
+                        break;
+                    case ITEM_PADDLE_SHRINK:
+                        SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);  // 青
+                        break;
+                    default:
+                        SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255); // 黄色
+                        break;
+                }
                 SDL_RenderFillRect(renderer, &items[i].rect);
             }
         }

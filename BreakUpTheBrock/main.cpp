@@ -26,6 +26,8 @@
 /* アイテム関連 */
 #define MAX_ITEMS 10    //同時に存在できるアイテム数
 #define ITEM_SIZE 12    //アイテムの見た目のサイズ
+#define MAX_BALLS 5     //最大ボール数
+
 
 /* アイムの種類 */
 typedef enum {
@@ -34,6 +36,14 @@ typedef enum {
     ITEM_PADDLE_SHRINK, //パドルが短くなる
     ITEM_BALL_PLUS      //ボールが増える
 } ItemType;
+
+/* 複数ボール管理用に追加 */
+typedef struct {
+    float x, y;
+    float vx, vy;
+    SDL_Rect rect;
+    int active;
+} Ball;
 
 /* アイテム構造体 */
 typedef struct 
@@ -47,6 +57,8 @@ typedef struct
 
 //アイテム管理用配列
 Item items[MAX_ITEMS];
+//複数ボール用
+Ball balls[MAX_BALLS];
 
 /* テキスト描画関数(残機を画面に表示する) */
 void draw_text(SDL_Renderer* renderer, TTF_Font* font, 
@@ -94,11 +106,28 @@ void apply_item_effect(ItemType type, int* lives, SDL_Rect* paddle)
         }
         break;
     case ITEM_BALL_PLUS:
-        printf("Extra Ball! (Not implemented yet)\n");
-        //ボール追加機能は将来的に追加
-        break;
+        for(int i = 0; i < MAX_BALLS; i++)
+        {
+            if(!balls[i].active)
+            {
+                for(int j = 0; j < MAX_BALLS; j++)
+                {
+                    if(balls[j].active)
+                    {
+                        balls[i].x = balls[j].x;
+                        balls[i].y = balls[j].y;
+                        balls[i].vx = balls[j].vx;
+                        balls[i].vy = balls[j].vy;
+                        balls[i].rect.w = BALL_SIZE;
+                        balls[i].rect.h = BALL_SIZE;
+                        balls[i].active = 1;
+                        printf("Extra Ball! (Not implemented yet)\n");
+                        return;
+                    }
+                }
+            }
+        }
     
-    default:
         break;
     }
 
@@ -182,18 +211,29 @@ int main(int argc, char* argv[])
     };
 
     /* ボール初期位置と速度 */
-    float ball_x = (WINDOW_WIDTH - BALL_SIZE) / 2.0f;
+    for(int i = 0; i < MAX_BALLS; i++)
+    {
+        balls[i].active = 0;
+    }
+    balls[0].x = (WINDOW_WIDTH - BALL_SIZE) / 2.0f;
+    balls[0].y = paddle.y - BALL_SIZE -2;
+    balls[0].vx = BALL_SPEED;
+    balls[0].vy = -BALL_SPEED;
+    balls[0].rect.w = BALL_SIZE;
+    balls[0].rect.h = BALL_SIZE;
+    balls[0].active = 1;
+
+    /*float ball_x = (WINDOW_WIDTH - BALL_SIZE) / 2.0f;
     float ball_y = paddle.y - BALL_SIZE -2;
     float ball_vx = BALL_SPEED;
     float ball_vy = -BALL_SPEED;
-
 
     SDL_Rect ball = {
         .x = (int)ball_x,
         .y = (int)ball_y, //パドルのすぐ上に配置
         .w = BALL_SIZE,
         .h = BALL_SIZE
-    };
+    };*/
     
     /* ブロック */
     SDL_Rect blocks[BLOCK_ROWS][BLOCK_COLS];
@@ -249,73 +289,95 @@ int main(int argc, char* argv[])
                 }
             }
         }
-        /* ボール移動 */
-        ball_x += ball_vx;
-        ball_y += ball_vy;
 
-        /* 描画用に整数へ */
-        ball.x = (int)ball_x;
-        ball.y = (int)ball_y;
-
-        /* 壁に当たったら跳ね返る */
-        if(ball.x <= 0 || ball.x + BALL_SIZE >= WINDOW_WIDTH)
+        /* 複数ボール更新 */
+        for(int i = 0; i < MAX_BALLS; i++)
         {
-            ball_vx *= -1;
-        }
-        if(ball.y <= 0)
-        {
-            ball_vy *= -1;
-        }
+            if(!balls[i].active) continue;
+            balls[i].x += balls[i].vx;
+            balls[i].y += balls[i].vy;
+            balls[i].rect.x = (int)balls[i].x;
+            balls[i].rect.y = (int)balls[i].y;
 
-        /* パドルに当たったら跳ね返る */
-        if(SDL_HasIntersection(&ball, &paddle) && ball_vy > 0)
-        {
-            //パドル中心とボール中心の差
-            int paddle_center = paddle.x + paddle.w / 2;
-            int ball_center = ball.x + ball.w / 2;
-            int diff = ball_center - paddle_center;
-
-           //[-1.0, 1.0]の範囲で正規化
-            float norm = (float)diff / (PADDLE_WIDTH / 2);
-
-            //最大角度を調整(30〜60度)
-            float angle = norm * (M_PI / 3); //最大60度まで
-
-            float speed = sqrt(ball_vx * ball_vx 
-                + ball_vy * ball_vy); // 速度ベクトルの大きさを保つ
-
-            if(speed < 1.5f)
+            /* 壁に当たったら跳ね返る */
+            if(balls[i].rect.x <= 0 || balls[i].rect.x + BALL_SIZE >= WINDOW_WIDTH)
             {
-                speed = 1.5f;
+                balls[i].vx *= -1;
             }
 
-            ball_vx = speed * sin(angle);
-            ball_vy = -speed * cos(angle);
-        }
-
-        /* ブロックと衝突 */
-        for(int i = 0; i < BLOCK_ROWS; i++)
-        {
-            for(int j = 0; j < BLOCK_COLS; j++)
+            if(balls[i].rect.y <= 0)
             {
-                if(block_visible[i][j] && SDL_HasIntersection(&ball, &blocks[i][j]))
+                balls[i].vy *= -1;
+            }
+
+            /* パドルに当たったら跳ね返る */
+            if(SDL_HasIntersection(&balls[i].rect, &paddle) && balls[i].vy > 0)
+            {
+                //パドル中心とボール中心の差
+                int center = paddle.x + paddle.w / 2;
+                int ball_center = balls[i].rect.x + BALL_SIZE /2;
+                //[-1.0, 1.0]の範囲で正規化
+                float norm = (float)(ball_center - center) / (paddle.w / 2);
+                //最大角度を調整(30〜60度)
+                float angle = norm * (M_PI / 3);
+
+                // 速度ベクトルの大きさを保つ
+                float speed = sqrt(balls[i].vx * balls[i].vx + balls[i].vy * balls[i].vy);
+                if(speed < 1.5f) speed = 1.5f;
+                balls[i].vx = speed * sin(angle);
+                balls[i].vy = -speed * cos(angle);
+            }
+
+            /* ブロックと衝突 */
+            for(int row = 0; row < BLOCK_ROWS; row++)
+            for(int col = 0; col < BLOCK_COLS; col++)
+            {
+                if(block_visible[row][col] && SDL_HasIntersection(&balls[i].rect, &blocks[row][col]))
                 {
-                    block_visible[i][j] = 0;
-                    ball_vy *= -1;
+                    block_visible[row][col] = 0;
+                    balls[i].vy *= -1;
                     score += 10;
 
                     if(rand() % 5 == 0)
                     {
-                        ItemType type = static_cast<ItemType>(rand() % 3); //0〜２：３種類のアイテムからランダム
-                        spawn_item(blocks[i][j].x + BLOCK_WIDTH / 2 - ITEM_SIZE / 2,
-                                   blocks[i][j].y + BLOCK_HEIGHT, type); 
+                        spawn_item(blocks[row][col].x + BLOCK_WIDTH / 2 - ITEM_SIZE / 2,
+                                   blocks[row][col].y + BLOCK_HEIGHT,
+                                   (ItemType)(rand() % 4));
                     }
-
-                    goto skip_check;
                 }
             }
+
+            if(balls[i].rect.y > WINDOW_HEIGHT)
+            {
+                balls[i].active = 0;
+            }
         }
-        skip_check:;
+
+        /* ボールが全て消えたら */
+        int active_ball = 0;
+        for(int i = 0; i < MAX_BALLS; i++)
+        {
+            if(balls[i].active) active_ball++;
+        }
+
+        if(active_ball == 0)
+        {
+            lives--;
+            if(lives <= 0)
+            {
+                printf("Game Over. Final Score: %d\n", score); quit_flg = 0;
+            }
+            else
+            {
+                balls[0].x = (WINDOW_WIDTH - BALL_SIZE) / 2.0f;
+                balls[0].y = paddle.y - BALL_SIZE - 2;
+                balls[0].vx = BALL_SPEED;
+                balls[0].vy = -BALL_SPEED;
+                balls[0].active = 1;
+                printf("Ball fell. Lives left: %d\n", lives);
+                SDL_Delay(1000);
+            }
+        }
 
         /* アイテム移動と取得判定 */
         for(int i = 0; i < MAX_ITEMS; i++)
@@ -326,16 +388,13 @@ int main(int argc, char* argv[])
                 items[i].rect.x = (int)items[i].x;
                 items[i].rect.y = (int)items[i].y;
 
-                //パドルとアイテムの当たり判定
                 if(SDL_HasIntersection(&paddle, &items[i].rect))
                 {
                     apply_item_effect(items[i].type, &lives, &paddle);
-                    items[i].active = 0;    //アイテム消去
-                }
-                else if(items[i].y > WINDOW_HEIGHT) //画面外に落ちたら消去
-                {
                     items[i].active = 0;
                 }
+                else if(items[i].y > WINDOW_HEIGHT)
+                    items[i].active = 0;
             }
         }
 
@@ -364,13 +423,13 @@ int main(int argc, char* argv[])
         }
 
         /* 下に落ちたらゲーム終了 */
-        if(ball.y > WINDOW_HEIGHT)
+        /*if(ball.y > WINDOW_HEIGHT)
         {
             lives--;
             if(lives <= 0)
-            {
+            {*/
                 /* ゲームオーバーでもスコア表示 */
-                printf("Ball fell. Game Over. Final Score: %d\n", score);
+                /*printf("Ball fell. Game Over. Final Score: %d\n", score);
                 quit_flg = 0;
             }
             else
@@ -384,7 +443,7 @@ int main(int argc, char* argv[])
                 SDL_Delay(1000);
             }
             
-        }
+        }*/
 
         /* 背景塗りつぶし */
         SDL_SetRenderDrawColor(renderer, 0xdf, 0xff, 0xdf, 255);
@@ -395,7 +454,13 @@ int main(int argc, char* argv[])
         SDL_RenderFillRect(renderer, &paddle);
 
         /* ボール描画 */
-        SDL_RenderFillRect(renderer, &ball);
+        for(int i = 0; i < MAX_BALLS; i++)
+        {
+            if(balls[i].active)
+            {
+                SDL_RenderFillRect(renderer, &balls[i].rect);
+            }
+        }
 
         /* ブロック描画 */
         SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
@@ -411,27 +476,34 @@ int main(int argc, char* argv[])
         }
 
         /* アイテム描画(赤で表示) */
-        
         for(int i = 0; i < MAX_ITEMS; i++)
         {
-            if(items[i].active)
+            if(!items[i].active) continue;
+
+            SDL_Rect r = items[i].rect;
+            switch(items[i].type)
             {
-                switch (items[i].type)
-                {
-                    case ITEM_LIFE_PLUS:
-                        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);  // 赤
-                        break;
-                    case ITEM_PADDLE_EXPAND:
-                        SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);  // 緑
-                        break;
-                    case ITEM_PADDLE_SHRINK:
-                        SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);  // 青
-                        break;
-                    default:
-                        SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255); // 黄色
-                        break;
-                }
-                SDL_RenderFillRect(renderer, &items[i].rect);
+                case ITEM_LIFE_PLUS:
+                    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+                    SDL_RenderDrawLine(renderer, r.x + r.w / 2, r.y, r.x + r.w / 2, r.y + r.h);
+                    SDL_RenderDrawLine(renderer, r.x, r.y + r.h / 2, r.x + r.w, r.y + r.h / 2);
+                    break;
+                case ITEM_PADDLE_EXPAND:
+                    SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+                    SDL_RenderFillRect(renderer, &r);
+                    SDL_RenderDrawLine(renderer, r.x, r.y + r.h / 2, r.x + r.w, r.y + r.h / 2);
+                    break;
+                case ITEM_PADDLE_SHRINK:
+                    SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+                    SDL_RenderFillRect(renderer, &r);
+                    SDL_RenderDrawLine(renderer, r.x + 2, r.y + r.h / 2, r.x + r.w - 2, r.y + r.h / 2);
+                    break;
+                case ITEM_BALL_PLUS:
+                    SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
+                    SDL_RenderDrawRect(renderer, &r);
+                    SDL_RenderDrawLine(renderer, r.x + 3, r.y + 3, r.x + r.w - 3, r.y + r.h - 3);
+                    SDL_RenderDrawLine(renderer, r.x + r.w - 3, r.y + 3, r.x + 3, r.y + r.h - 3);
+                    break;
             }
         }
 

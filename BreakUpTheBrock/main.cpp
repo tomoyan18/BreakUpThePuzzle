@@ -176,6 +176,7 @@ int main(int argc, char* argv[])
     SDL_Renderer *renderer;
     int quit_flg = 1;
     int ball_waiting = 1;
+    int sceneEntered = 0;
 
     //スコア初期化
     int score = 0;
@@ -312,9 +313,46 @@ int main(int argc, char* argv[])
 
                     case SCENE_GAMEOVER:
                     case SCENE_CLEAR:
-                        if (event.key.keysym.sym == SDLK_RETURN)
+                        if (event.key.keysym.sym == SDLK_SPACE)
                         {
                             currentScene = SCENE_TITLE;
+                            sceneEntered = 0;
+
+                            score = 0;
+                            lives = 3;
+
+                            paddle.x = (WINDOW_WIDTH - PADDLE_WIDTH) / 2;
+                            paddle.y = WINDOW_HEIGHT - 50;
+                            paddle.w = PADDLE_WIDTH;
+
+                            for(int i = 0; i < MAX_BALLS; i++)
+                            {
+                                balls[i].active = 0;
+                            }
+                            balls[0].x = paddle.x + (paddle.w - BALL_SIZE) / 2.0f;
+                            balls[0].y = paddle.y - BALL_SIZE - 2;
+                            balls[0].vx = BALL_SPEED;
+                            balls[0].vy = -BALL_SPEED;
+                            balls[0].rect.w = BALL_SIZE;
+                            balls[0].rect.h = BALL_SIZE;
+                            balls[0].active = 1;
+                            
+                            for(int i = 0; i < BLOCK_ROWS; i++)
+                            {
+                                for(int j = 0; j < BLOCK_COLS; j++)
+                                {
+                                    block_visible[i][j] = 1;
+                                }
+                            }
+
+                            for(int i = 0; i < MAX_ITEMS; i++)
+                            {
+                                items[i].active = 0;
+                            }
+
+                            ball_waiting = 1;
+                            
+
                         }
                         break;
                 }
@@ -376,8 +414,8 @@ int main(int argc, char* argv[])
             {
                 if(block_visible[row][col] && SDL_HasIntersection(&balls[i].rect, &blocks[row][col]))
                 {
-                    /*block_visible[row][col] = 0;
-                    balls[i].vy *= -1;
+                    block_visible[row][col] = 0;
+                    //balls[i].vy *= -1;
                     score += 10;
 
                     if(rand() % 5 == 0)
@@ -385,7 +423,7 @@ int main(int argc, char* argv[])
                         spawn_item(blocks[row][col].x + BLOCK_WIDTH / 2 - ITEM_SIZE / 2,
                                    blocks[row][col].y + BLOCK_HEIGHT,
                                    (ItemType)(rand() % 4));
-                    }*/
+                    }
                    
                     block_visible[row][col] = 0;
                     score += 10;
@@ -447,7 +485,8 @@ int main(int argc, char* argv[])
             lives--;
             if(lives <= 0)
             {
-                printf("Game Over. Final Score: %d\n", score); quit_flg = 0;
+                currentScene = SCENE_GAMEOVER;
+                ball_waiting = 1; 
             }
             else
             {
@@ -460,6 +499,7 @@ int main(int argc, char* argv[])
                 ball_waiting = 1;
 
                 printf("Ball fell. Lives left: %d\n", lives);
+                
                 SDL_Delay(1000);
             }
         }
@@ -503,8 +543,22 @@ int main(int argc, char* argv[])
         if(all_cleared)
         {
             /* クリアメッセージとスコア表示 */
-            printf("Stage Cleared! Final Score: %d\n", score);
-            quit_flg = 0;
+            currentScene = SCENE_CLEAR;
+            ball_waiting = 1;
+        }
+
+        if((currentScene == SCENE_GAMEOVER || currentScene == SCENE_CLEAR) && !sceneEntered)
+        {
+            if(currentScene == SCENE_GAMEOVER)
+            {
+                printf("Game Over. Final Score: %d\n", score);
+                sceneEntered = 1;
+            } 
+            else 
+            {
+                printf("Game Clear! Final Score: %d\n", score);
+                sceneEntered = 1;
+            }
         }
 
         switch (currentScene)

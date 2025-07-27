@@ -15,7 +15,7 @@
 
 //ボール関連
 #define BALL_SIZE 8
-#define BALL_SPEED 2.0f
+#define BALL_SPEED 3.0f
 
 /* ブロック */
 #define BLOCK_ROWS 5
@@ -28,6 +28,15 @@
 #define ITEM_SIZE 12    //アイテムの見た目のサイズ
 #define MAX_BALLS 5     //最大ボール数
 
+/* ゲームシーン関連 */
+typedef enum{
+    SCENE_TITLE,
+    SCENE_PLAY,
+    SCENE_GAMEOVER,
+    SCENE_CLEAR
+} GameScene;
+
+GameScene currentScene = SCENE_TITLE;
 
 /* アイムの種類 */
 typedef enum {
@@ -73,14 +82,20 @@ void draw_text(SDL_Renderer* renderer, TTF_Font* font,
     SDL_DestroyTexture(texture);
 }
 
+/* タイトル画面描画関数 */
+void draw_titlle_screen(SDL_Renderer* renderer, TTF_Font* font)
+{
+    SDL_SetRenderDrawColor(renderer, 0xff, 0xff, 0xcc, 255); //明るめの背景
+    SDL_RenderClear(renderer);
+
+    draw_text(renderer, font, "Block Breaker", 80, 150);
+    draw_text(renderer, font, "Press ENTER to START", 70, 220);
+}
+
 /* アイテムの効果適用 */
 void apply_item_effect(ItemType type, int* lives, SDL_Rect* paddle)
 {
-    /*if(type == ITEM_LIFE_PLUS)
-    {
-        (*lives)++;
-        printf("Got Life Up! Lives = %d\n", *lives);
-    }*/
+    
     switch (type)
     {
     case ITEM_LIFE_PLUS:
@@ -160,6 +175,7 @@ int main(int argc, char* argv[])
     SDL_Window *window;
     SDL_Renderer *renderer;
     int quit_flg = 1;
+    int ball_waiting = 1;
 
     //スコア初期化
     int score = 0;
@@ -223,18 +239,6 @@ int main(int argc, char* argv[])
     balls[0].rect.h = BALL_SIZE;
     balls[0].active = 1;
 
-    /*float ball_x = (WINDOW_WIDTH - BALL_SIZE) / 2.0f;
-    float ball_y = paddle.y - BALL_SIZE -2;
-    float ball_vx = BALL_SPEED;
-    float ball_vy = -BALL_SPEED;
-
-    SDL_Rect ball = {
-        .x = (int)ball_x,
-        .y = (int)ball_y, //パドルのすぐ上に配置
-        .w = BALL_SIZE,
-        .h = BALL_SIZE
-    };*/
-    
     /* ブロック */
     SDL_Rect blocks[BLOCK_ROWS][BLOCK_COLS];
     int block_visible[BLOCK_ROWS][BLOCK_COLS];
@@ -269,31 +273,69 @@ int main(int argc, char* argv[])
             }
             else if(event.type == SDL_KEYDOWN)
             {
-                switch (event.key.keysym.sym)
+                
+                switch (currentScene)
                 {
-                    case SDLK_ESCAPE:
-                        quit_flg = 0;
+                    case SCENE_TITLE:
+                        if(event.key.keysym.sym == SDLK_RETURN)
+                        {
+                            //ゲーム初期化
+                            score = 0;
+                            lives = 3;
+                            //ブロック・ボール・アイテム初期化処理をここで呼ぶ
+                            currentScene = SCENE_PLAY;
+                        }
                         break;
-                    case SDLK_LEFT:
-                        if(paddle.x > 0)
+                    
+                    case SCENE_PLAY:
+                        if(event.key.keysym.sym == SDLK_ESCAPE)
+                        {
+                            quit_flg = 0;
+                        }
+                        else if(event.key.keysym.sym == SDLK_LEFT && paddle.x > 0)
                         {
                             paddle.x -= PADDLE_SPEED;
                         }
-                        break;
-                    case SDLK_RIGHT:
-                        if(paddle.x + PADDLE_WIDTH < WINDOW_WIDTH)
+                        else if(event.key.keysym.sym == SDLK_RIGHT && paddle.x + paddle.w < WINDOW_WIDTH)
                         {
                             paddle.x += PADDLE_SPEED;
                         }
+                        else if (event.key.keysym.sym == SDLK_SPACE && ball_waiting)
+                        {
+                            ball_waiting = 0;
+                            float speed = BALL_SPEED;
+                            balls[0].vx = 0;
+                            balls[0].vy = -speed;
+                        }
+                        
+                        break;
+
+                    case SCENE_GAMEOVER:
+                    case SCENE_CLEAR:
+                        if (event.key.keysym.sym == SDLK_RETURN)
+                        {
+                            currentScene = SCENE_TITLE;
+                        }
                         break;
                 }
+
             }
+        }
+
+        if(ball_waiting)
+        {
+            balls[0].x = paddle.x + (paddle.w - BALL_SIZE) / 2.0f;
+            balls[0].y = paddle.y - BALL_SIZE - 2;
+            balls[0].rect.x = (int)balls[0].x;
+            balls[0].rect.y = (int)balls[0].y;
         }
 
         /* 複数ボール更新 */
         for(int i = 0; i < MAX_BALLS; i++)
         {
             if(!balls[i].active) continue;
+            if(ball_waiting) continue;
+
             balls[i].x += balls[i].vx;
             balls[i].y += balls[i].vy;
             balls[i].rect.x = (int)balls[i].x;
@@ -334,7 +376,7 @@ int main(int argc, char* argv[])
             {
                 if(block_visible[row][col] && SDL_HasIntersection(&balls[i].rect, &blocks[row][col]))
                 {
-                    block_visible[row][col] = 0;
+                    /*block_visible[row][col] = 0;
                     balls[i].vy *= -1;
                     score += 10;
 
@@ -343,7 +385,47 @@ int main(int argc, char* argv[])
                         spawn_item(blocks[row][col].x + BLOCK_WIDTH / 2 - ITEM_SIZE / 2,
                                    blocks[row][col].y + BLOCK_HEIGHT,
                                    (ItemType)(rand() % 4));
+                    }*/
+                   
+                    block_visible[row][col] = 0;
+                    score += 10;
+                    
+                    SDL_Rect* b = &balls[i].rect;
+                    SDL_Rect* bl = &blocks[row][col];
+
+                    int ballCenterX = b->x + b->w / 2;
+                    int ballCenterY = b->y + b->h / 2;
+
+                    int blockCenterX = bl->x + bl->w / 2;
+                    int blockCenterY = bl->y + bl->h / 2;
+
+                    int dx = ballCenterX - blockCenterX;
+                    int dy = ballCenterY - blockCenterY;
+
+                    // ブロック幅と高さの半分
+                    int halfWidth = bl->w / 2;
+                    int halfHeight = bl->h / 2;
+
+                    // ボールの速度ベクトル（元々の速度）
+                    float vx = balls[i].vx;
+                    float vy = balls[i].vy;
+
+                    // 衝突の重なり幅（距離）を計算（絶対値で）
+                    float overlapX = halfWidth - abs(dx);
+                    float overlapY = halfHeight - abs(dy);
+
+                    // 最も小さい重なり方向に跳ね返りを変える
+                    if(overlapX < overlapY)
+                    {
+                        // 左右にぶつかったので横方向の速度を反転
+                        balls[i].vx = -vx;
                     }
+                    else
+                    {
+                        // 上下にぶつかったので縦方向の速度を反転
+                        balls[i].vy = -vy;
+                    }
+
                 }
             }
 
@@ -374,6 +456,9 @@ int main(int argc, char* argv[])
                 balls[0].vx = BALL_SPEED;
                 balls[0].vy = -BALL_SPEED;
                 balls[0].active = 1;
+
+                ball_waiting = 1;
+
                 printf("Ball fell. Lives left: %d\n", lives);
                 SDL_Delay(1000);
             }
@@ -422,96 +507,99 @@ int main(int argc, char* argv[])
             quit_flg = 0;
         }
 
-        /* 下に落ちたらゲーム終了 */
-        /*if(ball.y > WINDOW_HEIGHT)
+        switch (currentScene)
         {
-            lives--;
-            if(lives <= 0)
-            {*/
-                /* ゲームオーバーでもスコア表示 */
-                /*printf("Ball fell. Game Over. Final Score: %d\n", score);
-                quit_flg = 0;
-            }
-            else
-            {
-                //ボール位置リセット
-                ball_x = (WINDOW_WIDTH - BALL_SIZE) / 2.0f;
-                ball_y = paddle.y - BALL_SIZE - 2;
-                ball_vx = BALL_SPEED;
-                ball_vy = -BALL_SPEED;
-                printf("Ball fell. Lives left: %d\n", lives);
-                SDL_Delay(1000);
-            }
-            
-        }*/
+            case SCENE_TITLE:
+                //タイトル画面描画
+                draw_titlle_screen(renderer, font);
+                break;
+            case SCENE_PLAY:
+                /* 背景塗りつぶし */
+                SDL_SetRenderDrawColor(renderer, 0xdf, 0xff, 0xdf, 255);
+                SDL_RenderClear(renderer);
 
-        /* 背景塗りつぶし */
-        SDL_SetRenderDrawColor(renderer, 0xdf, 0xff, 0xdf, 255);
-        SDL_RenderClear(renderer);
+                /* パドル描画(黒) */
+                SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+                SDL_RenderFillRect(renderer, &paddle);
 
-        /* パドル描画(黒) */
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderFillRect(renderer, &paddle);
-
-        /* ボール描画 */
-        for(int i = 0; i < MAX_BALLS; i++)
-        {
-            if(balls[i].active)
-            {
-                SDL_RenderFillRect(renderer, &balls[i].rect);
-            }
-        }
-
-        /* ブロック描画 */
-        SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
-        for(int i = 0; i < BLOCK_ROWS; i++)
-        {
-            for(int j = 0; j < BLOCK_COLS; j++)
-            {
-                if(block_visible[i][j])
+                /* ボール描画 */
+                for(int i = 0; i < MAX_BALLS; i++)
                 {
-                    SDL_RenderFillRect(renderer, &blocks[i][j]);
+                    if(balls[i].active)
+                    {
+                        SDL_RenderFillRect(renderer, &balls[i].rect);
+                    }  
                 }
-            }
+
+                /* ブロック描画 */
+                SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+                for(int i = 0; i < BLOCK_ROWS; i++)
+                {
+                    for(int j = 0; j < BLOCK_COLS; j++)
+                    {
+                        if(block_visible[i][j])
+                        {
+                            SDL_RenderFillRect(renderer, &blocks[i][j]);
+                        }
+                    }
+                }
+
+                /* アイテム描画(赤で表示) */
+                for(int i = 0; i < MAX_ITEMS; i++)
+                {
+                    if(!items[i].active) continue;
+
+                    SDL_Rect r = items[i].rect;
+                    switch(items[i].type)
+                    {
+                        case ITEM_LIFE_PLUS:
+                            SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+                            SDL_RenderDrawLine(renderer, r.x + r.w / 2, r.y, r.x + r.w / 2, r.y + r.h);
+                            SDL_RenderDrawLine(renderer, r.x, r.y + r.h / 2, r.x + r.w, r.y + r.h / 2);
+                            break;
+                        case ITEM_PADDLE_EXPAND:
+                            SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+                            SDL_RenderFillRect(renderer, &r);
+                            SDL_RenderDrawLine(renderer, r.x, r.y + r.h / 2, r.x + r.w, r.y + r.h / 2);
+                            break;
+                        case ITEM_PADDLE_SHRINK:
+                            SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+                            SDL_RenderFillRect(renderer, &r);
+                            SDL_RenderDrawLine(renderer, r.x + r.w / 2, r.y, r.x + r.w / 2, r.y + r.h);
+                            break;
+                        case ITEM_BALL_PLUS:
+                            SDL_SetRenderDrawColor(renderer, 255, 165, 0, 255); // オレンジ
+                            SDL_RenderFillRect(renderer, &r);
+                            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // 黒で丸っぽく描写（代用）
+                            SDL_RenderDrawLine(renderer, r.x, r.y, r.x + r.w, r.y + r.h);
+                            SDL_RenderDrawLine(renderer, r.x + r.w, r.y, r.x, r.y + r.h);
+                            break;
+                    }
+                }
+
+                /* 残機表示処理  */
+                char lives_text[32];
+                snprintf(lives_text, sizeof(lives_text), "Lives: %d", lives);    //表示するテキスト
+                draw_text(renderer, font, lives_text, WINDOW_WIDTH - 80, 5);    //画面右上に描画
+
+                break;
+            
+            case SCENE_GAMEOVER:
+                //ゲームオーバー画面描画
+                SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+                SDL_RenderClear(renderer);
+                draw_text(renderer, font, "Game Over", 110, 180);
+                draw_text(renderer, font, "Press ENTER to Restart", 50, 230);
+                break;
+            case SCENE_CLEAR:
+                // クリア画面描画
+                SDL_SetRenderDrawColor(renderer, 0xee, 0xff, 0xee, 255);
+                SDL_RenderClear(renderer);
+                draw_text(renderer, font, "Stage Cleared!", 90, 180);
+                draw_text(renderer, font, "Press ENTER to Return", 60, 230);
+                break;
         }
-
-        /* アイテム描画(赤で表示) */
-        for(int i = 0; i < MAX_ITEMS; i++)
-        {
-            if(!items[i].active) continue;
-
-            SDL_Rect r = items[i].rect;
-            switch(items[i].type)
-            {
-                case ITEM_LIFE_PLUS:
-                    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-                    SDL_RenderDrawLine(renderer, r.x + r.w / 2, r.y, r.x + r.w / 2, r.y + r.h);
-                    SDL_RenderDrawLine(renderer, r.x, r.y + r.h / 2, r.x + r.w, r.y + r.h / 2);
-                    break;
-                case ITEM_PADDLE_EXPAND:
-                    SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
-                    SDL_RenderFillRect(renderer, &r);
-                    SDL_RenderDrawLine(renderer, r.x, r.y + r.h / 2, r.x + r.w, r.y + r.h / 2);
-                    break;
-                case ITEM_PADDLE_SHRINK:
-                    SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
-                    SDL_RenderFillRect(renderer, &r);
-                    SDL_RenderDrawLine(renderer, r.x + 2, r.y + r.h / 2, r.x + r.w - 2, r.y + r.h / 2);
-                    break;
-                case ITEM_BALL_PLUS:
-                    SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
-                    SDL_RenderDrawRect(renderer, &r);
-                    SDL_RenderDrawLine(renderer, r.x + 3, r.y + 3, r.x + r.w - 3, r.y + r.h - 3);
-                    SDL_RenderDrawLine(renderer, r.x + r.w - 3, r.y + 3, r.x + 3, r.y + r.h - 3);
-                    break;
-            }
-        }
-
-        /* 残機表示処理  */
-        char lives_text[32];
-        snprintf(lives_text, sizeof(lives_text), "Lives: %d", lives);    //表示するテキスト
-        draw_text(renderer, font, lives_text, WINDOW_WIDTH - 80, 5);    //画面右上に描画
-
+        
         /* 描画反映 */
         SDL_RenderPresent(renderer);
 
@@ -523,5 +611,5 @@ int main(int argc, char* argv[])
     SDL_Quit();
 
     return 0;
-    
+
 }

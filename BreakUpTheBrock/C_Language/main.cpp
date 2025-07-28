@@ -643,14 +643,14 @@ int main(int argc, char* argv[])
                 SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
                 SDL_RenderClear(renderer);
                 draw_text(renderer, font, "Game Over", 110, 180);
-                draw_text(renderer, font, "Press ENTER to Restart", 50, 230);
+                draw_text(renderer, font, "Press SPACE to Restart", 50, 230);
                 break;
             case SCENE_CLEAR:
                 // クリア画面描画
                 SDL_SetRenderDrawColor(renderer, 0xee, 0xff, 0xee, 255);
                 SDL_RenderClear(renderer);
                 draw_text(renderer, font, "Stage Cleared!", 90, 180);
-                draw_text(renderer, font, "Press ENTER to Return", 60, 230);
+                draw_text(renderer, font, "Press SPACE to Return", 60, 230);
                 break;
         }
         

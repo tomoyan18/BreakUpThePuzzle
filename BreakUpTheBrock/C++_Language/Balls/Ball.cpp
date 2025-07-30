@@ -49,6 +49,12 @@ bool Ball::checkCollision(const Paddle& paddle)
     if(SDL_HasIntersection(&ballRect, &paddleRect))
     {
         vy = -vy;
+        //追加
+        float paddleCenter = paddle.getX() + paddle.getWidth() / 2.0f;
+        float ballCenter = x + radius;
+        float diff = (ballCenter - paddleCenter) / (paddle.getWidth() / 2.0f); // -1.0 ～ 1.0
+        vx = diff * 5.0f; // ← 角度調整（値が大きいと激しく曲がる）
+ 
         return true;
     }
 
@@ -63,6 +69,7 @@ bool Ball::checkCollision(Block& block)
     if(SDL_HasIntersection(&ballRect, &blockRect))
     {
         vy = -vy;
+        block.hit();
         return true;
     }
 

@@ -1,6 +1,6 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
-#include "Game.h"
+#include "Games/Game.h"
 
 int main(int argc, char* argv[])
 {

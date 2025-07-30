@@ -1,4 +1,4 @@
-#include "Paddle.h"
+#include "Paddles/Paddle.h"
 
 Paddle::Paddle()
 {
@@ -40,13 +40,13 @@ void Paddle:: expand()
     width = 140;
 }
 
-void Paddle:shrink()
+void Paddle::shrink()
 {
     width = 60;
 }
 
 int Paddle::getX() const { return x; }
-int paddle::getY() const { return y; }
+int Paddle::getY() const { return y; }
 int Paddle::getWidth() const { return width; } 
 
 SDL_Rect Paddle::getRect() const {

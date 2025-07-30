@@ -1,7 +1,7 @@
 #pragma once
 #include <SDL2/SDL.h>
-#include "Paddle.h"
-#include "Block.h"
+#include "Paddles/Paddle.h"
+#include "Blocks/Block.h"
 
 class Ball
 {

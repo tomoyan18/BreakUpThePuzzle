@@ -1,4 +1,4 @@
-#include "Stage.h"
+#include "Stages/Stage.h"
 
 std::vector<Block> Stage::createStage(int stageNum)
 {

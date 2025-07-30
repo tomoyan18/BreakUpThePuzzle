@@ -1,10 +1,11 @@
 #pragma once
 #include <vector>
-#include "Ball.h"
-#include "Paddle.h"
-#include "Block.h"
-#include "Item.h"
-#include "Stage.h"
+#include <SDL2/SDL_ttf.h>
+#include "Balls/Ball.h"
+#include "Paddles/Paddle.h"
+#include "Blocks/Block.h"
+#include "Items/Item.h"
+#include "Stages/Stage.h"
 
 enum class GameState
 {

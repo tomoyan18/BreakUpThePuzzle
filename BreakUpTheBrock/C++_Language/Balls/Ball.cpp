@@ -1,4 +1,4 @@
-#include "Ball.h"
+#include "Balls/Ball.h"
 
 Ball::Ball(const Paddle& paddle)
 {

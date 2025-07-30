@@ -1,4 +1,4 @@
-#include "Item.h"
+#include "Items/Item.h"
 
 Item::Item(int x_, int y_, ItemType type_) : 
     x(x_), y(y_), type(type_), collected(false)
@@ -34,6 +34,19 @@ void Item::draw(SDL_Renderer* renderer)
     }
 
     SDL_RenderFillRect(renderer, &rect);
+
+}
+
+bool Item::checkCollision(const SDL_Rect& paddle)
+{
+    SDL_Rect itemRect = {x, y, 16, 16};
+    if(SDL_HasIntersection(&itemRect, &paddle))
+    {
+        collected = true;
+        return true;
+    }
+
+    return false;
 
 }
 

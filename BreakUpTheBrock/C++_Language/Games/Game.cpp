@@ -1,11 +1,11 @@
-#include "Game.h"
+#include "Games/Game.h"
 #include <SDL2/SDL_image.h>
 #include <ctime>
 
 Game::Game()
 {
     SDL_CreateWindowAndRenderer(640, 480, 0, &window, &renderer);
-    font = TTF_OpenFont("arial.ttf", 24);
+    font = TTF_OpenFont("Assets/Fonts/arial.ttf", 24);
     srand((unsigned int)time(NULL));
     state = GameState::TITLE;
     lives = 3;
@@ -120,7 +120,7 @@ void Game::updatePlay() {
 
     for (auto& item : items) {
         item.update();
-        if (item.checkCollision(paddle)) {
+        if (item.checkCollision(paddle.getRect())) {
             switch (item.getType()) {
                 case ITEM_LIFE_PLUS: lives++; break;
                 case ITEM_PADDLE_LONG: paddle.expand(); break;

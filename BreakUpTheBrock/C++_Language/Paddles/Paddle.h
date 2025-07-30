@@ -1,7 +1,7 @@
 #pragma once
 #include <SDL2/SDL.h>
 
-class
+class Paddle
 {
     public:
         Paddle();

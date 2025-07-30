@@ -15,4 +15,4 @@ class Block
     private:
         int x, y;
         bool destroyed;
-}
+};

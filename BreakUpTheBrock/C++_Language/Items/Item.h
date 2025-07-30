@@ -14,7 +14,7 @@ class Item
     public:
         Item(int x, int y, ItemType type);
         void update();
-        void draw();
+        void draw(SDL_Renderer* renderer);
         bool checkCollision(const SDL_Rect& paddle);
         bool isCollected() const;
         void markCollected();

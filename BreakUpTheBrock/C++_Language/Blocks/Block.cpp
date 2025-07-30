@@ -1,4 +1,4 @@
-#include "Block.h"
+#include "Blocks/Block.h"
 
 Block::Block(int x_, int y_) : x(x_), y(y_), destroyed(false)
 {

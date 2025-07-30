@@ -1,6 +1,6 @@
 #pragma once
 #include <vector>
-#include "Block.h"
+#include "Blocks/Block.h"
 
 class Stage
 {

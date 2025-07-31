@@ -32,7 +32,10 @@ void Ball::handleEvent(const SDL_Event& e, const Paddle& paddle)
 {
     if(!launched && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_SPACE)
     {
-        launched =true;
+        launched = true;
+        //初回は真上に飛ばす
+        vx = 0;
+        vy = -4;
     }
 
     if(!launched)

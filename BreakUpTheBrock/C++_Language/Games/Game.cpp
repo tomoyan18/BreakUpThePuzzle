@@ -104,19 +104,36 @@ void Game::resetStage() {
     paddle.reset();
     balls.push_back(Ball(paddle));
     blocks = Stage::createStage(stageNum);
-
-    //ステージ番号に応じてブロック配置を変える
-    blocks = Stage::createStage(stageNum);
 }
 
 void Game::updateTitle() {}
 void Game::updateGameOver() {}
-void Game::updateClear() {}
+void Game::updateClear() 
+{
+    SDL_Event e;
+    while (SDL_PollEvent(&e))
+    {
+        if(e.type == SDL_QUIT)
+        {
+            exit(0);
+        }
+
+        if(e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_SPACE)
+        {
+            stageNum++;                 //ステージ番号をすすめる
+            resetStage();               //新しいステージを読み込む
+            state = GameState::PLAY;    //Playに戻る
+        }
+
+    }
+    
+}
 
 void Game::updatePlay() {
     paddle.update();
     for (auto& ball : balls) ball.update();
 
+    // 衝突処理
     for (auto& ball : balls) {
         ball.checkCollision(paddle);
         for (auto& block : blocks) {
@@ -129,6 +146,7 @@ void Game::updatePlay() {
         }
     }
 
+    // アイテム処理
     for (auto& item : items) {
         item.update();
         if (item.checkCollision(paddle.getRect())) {
@@ -143,6 +161,7 @@ void Game::updatePlay() {
         }
     }
 
+    // 取得済みアイテムと画面外ボールを除去
     items.erase(std::remove_if(items.begin(), items.end(),
         [](const Item& item) { return item.isCollected(); }),
         items.end());
@@ -151,15 +170,24 @@ void Game::updatePlay() {
         [](const Ball& ball) { return ball.isOutOfBounds(); }),
         balls.end());
 
+    // ボール全滅時
     if (balls.empty()) {
         lives--;
-        if (lives <= 0) state = GameState::GAMEOVER;
-        else balls.push_back(Ball(paddle));
+        if (lives <= 0)
+            state = GameState::GAMEOVER;
+        else
+            balls.push_back(paddle);  // ボールだけ戻す
     }
 
+    // ステージクリア判定
     bool allCleared = true;
-    for (auto& block : blocks) if (!block.isDestroyed()) allCleared = false;
-    if (allCleared) state = GameState::CLEAR;
+    for (auto& block : blocks)
+        if (!block.isDestroyed())
+            allCleared = false;
+
+    if (allCleared) {
+        state = GameState::CLEAR;  // ★ ステートをCLEARに遷移
+    }
 }
 
 void Game::drawText(const char* text, int x, int y, SDL_Color color) {

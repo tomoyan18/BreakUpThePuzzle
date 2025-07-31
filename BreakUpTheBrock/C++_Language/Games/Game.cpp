@@ -39,7 +39,7 @@ void Game::handleEvents(bool& running) {
         if (e.type == SDL_QUIT) running = false;
         if (state == GameState::TITLE && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_SPACE) {
             state = GameState::PLAY;
-        } else if ((state == GameState::GAMEOVER || state == GameState::CLEAR) && e.type == SDL_KEYDOWN) {
+        } else if (state == GameState::GAMEOVER && e.type == SDL_KEYDOWN) {
             state = GameState::TITLE;
             lives = 3;
             score = 0;

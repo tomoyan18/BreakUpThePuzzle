@@ -48,6 +48,12 @@ void Game::handleEvents(bool& running) {
         } else if (state == GameState::PLAY) {
             paddle.handleEvent(e);
             for (auto& ball : balls) ball.handleEvent(e, paddle);
+        } else if(state == GameState::CLEAR && e.type == SDL_KEYDOWN)
+        {
+            //ステージクリア→次のステージに進む
+            stageNum++;
+            state = GameState::PLAY;
+            resetStage();
         }
     }
 }
@@ -76,6 +82,8 @@ void Game::draw() {
             for (auto& item : items) item.draw(renderer);
             drawText(("Lives: " + std::to_string(lives)).c_str(), 10, 10, {255, 255, 255});
             drawText(("Score: " + std::to_string(score)).c_str(), 520, 10, {255, 255, 255});
+            //ステージ番号
+            drawText(("Stage: " + std::to_string(stageNum + 1)).c_str(), 270, 10, { 255, 255, 0});
             break;
         case GameState::GAMEOVER:
             drawText("GAME OVER", 230, 200, {255, 0, 0});
@@ -95,6 +103,9 @@ void Game::resetStage() {
     items.clear();
     paddle.reset();
     balls.push_back(Ball(paddle));
+    blocks = Stage::createStage(stageNum);
+
+    //ステージ番号に応じてブロック配置を変える
     blocks = Stage::createStage(stageNum);
 }
 
@@ -143,7 +154,7 @@ void Game::updatePlay() {
     if (balls.empty()) {
         lives--;
         if (lives <= 0) state = GameState::GAMEOVER;
-        else resetStage();
+        else balls.push_back(Ball(paddle));
     }
 
     bool allCleared = true;

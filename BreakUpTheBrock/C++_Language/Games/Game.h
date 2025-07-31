@@ -49,5 +49,7 @@ class Game
         void updatePlay();
         void updateGameOver();
         void updateClear();
+
+        Uint32 clearTimerStart; //ステージクリア後の待機時間用タイマー
 };
 

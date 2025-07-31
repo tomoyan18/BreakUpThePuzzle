@@ -1,4 +1,5 @@
 #include "Balls/Ball.h"
+#include <cmath>
 
 Ball::Ball(const Paddle& paddle)
 {
@@ -56,7 +57,11 @@ bool Ball::checkCollision(const Paddle& paddle)
         float paddleCenter = paddle.getX() + paddle.getWidth() / 2.0f;
         float ballCenter = x + radius;
         float diff = (ballCenter - paddleCenter) / (paddle.getWidth() / 2.0f); // -1.0 ～ 1.0
-        vx = diff * 5.0f; // ← 角度調整（値が大きいと激しく曲がる）
+        
+        float angle = diff * (M_PI / 3);
+        float speed = 5.0f;
+        vx = speed * sin(angle);
+        vy = -speed * cos(angle);
  
         return true;
     }

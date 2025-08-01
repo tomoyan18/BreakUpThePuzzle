@@ -10,7 +10,7 @@ std::vector<Block> Stage::createStage(int stageNum)
     //const int rows = 4;   // 行数（縦のブロック数）
     const int spacingX = 10; // 横方向の間隔
     const int spacingY = 8;  // 縦方向の間隔
-    const int offsetX = 50;  // 左側余白
+    //const int offsetX = 50;  // 左側余白
     const int offsetY = 50;  // 上側余白
 
     int cols = 0;
@@ -35,6 +35,11 @@ std::vector<Block> Stage::createStage(int stageNum)
             rows = 4;
             break;
     }
+
+    //💡 中央寄せのために offsetX を列数に応じて再計算
+    int totalWidth = cols * blockWidth + (cols - 1) * spacingX;
+    int offsetX = (640 - totalWidth) / 2; // 画面幅640に対して中央揃え
+
 
     for(int row = 0; row < rows; row++)
     {

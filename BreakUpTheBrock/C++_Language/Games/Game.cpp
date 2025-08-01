@@ -91,7 +91,7 @@ void Game::draw() {
             break;
         case GameState::CLEAR:
             drawText("CLEAR!", 250, 200, {0, 255, 0});
-            drawText("Press any key to return", 170, 250, {255, 255, 255});
+            drawText("Press any key to Next Stage", 170, 250, {255, 255, 255});
             break;
     }
 
